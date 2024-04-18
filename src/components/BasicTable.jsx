@@ -3,87 +3,74 @@ import {
   getCoreRowModel,
   flexRender,
   getPaginationRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
 } from "@tanstack/react-table";
-import { m_data } from "../../data.js";
-import { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 
-const BasicTable = () => {
-  //memoized data
-  const data = useMemo(() => m_data, []);
-
-  /** @type import('@tanstack/react-table').ColumnDef<any>*/
-  const columns = [
-    {
-      header: "ID",
-      accessorKey: "id",
-    },
-    {
-      header: "Name",
-      accessorKey: "name",
-    },
-    {
-      header: "Email",
-      accessorKey: "email",
-    },
-    //with children
-    //now other headers become placeholders beside Children
-    {
-      header: "Children",
-      columns: [
-        {
-          header: "First",
-          cell: () => <h4>first</h4>,
-        },
-        {
-          header: "Second",
-          cell: () => <h4>Second</h4>,
-        },
-      ],
-    },
-    //accessor function
-    {
-      header: "New",
-      accessorFn: (row) => `${row.name} 18`,
-    },
-    //row and info are not the same
-    {
-      header: "Gender",
-      accessorKey: "gender",
-      cell: (info) => <h4>{info.getValue()}</h4>, // custom cell
-    },
-  ];
+const BasicTable = ({ data, columns }) => {
+  const [sorting, setSorting] = useState([]);
+  const [searchKey, setSearchKey] = useState("");
 
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    state: {
+      sorting,
+      globalFilter: searchKey,
+    },
+    onSortingChange: setSorting,
   });
 
   useEffect(() => {
     table.setPageSize(2); //items per page
     console.log(table.getPageCount());
-  }, []);
+  }, [table]);
 
   return (
     <div>
+      <input
+        type="text"
+        placeholder="search..."
+        value={searchKey}
+        onChange={(e) => setSearchKey(e.target.value)}
+      />
       <table>
+        {/* headers */}
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
-                <th key={header.id}>
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
+                <th
+                  style={{ cursor: "pointer" }}
+                  key={header.id}
+                  onClick={header.column.getToggleSortingHandler()}
+                >
+                  {header.isPlaceholder ? null : (
+                    <div>
+                      {flexRender(
                         header.column.columnDef.header,
                         header.getContext()
                       )}
+                      {/* sorting codes */}
+                      {
+                        { asc: "⬆️", desc: "⬇️" }[
+                          header.column.getIsSorted() ?? null
+                        ]
+                      }
+                    </div>
+                  )}
                 </th>
               ))}
             </tr>
           ))}
         </thead>
+
+        {/* rows */}
         <tbody>
           {table.getRowModel().rows.map((row) => (
             <tr key={row.id}>
@@ -96,6 +83,8 @@ const BasicTable = () => {
           ))}
         </tbody>
       </table>
+
+      {/* pagination */}
       <div>
         <button onClick={() => table.setPageIndex(0)}>first page</button>
         <button
